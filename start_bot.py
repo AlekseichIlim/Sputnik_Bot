@@ -4,6 +4,7 @@ import openpyxl
 import telebot
 from telebot import types
 
+from DataMonth import DataMonthNow
 from config import TELEGRAM_TOKEN, daily_report, report
 from functions import get_name_month_now, get_paths_to_file, get_count_day_month, get_plan_volume, get_actual_volume, \
     get_date_update_file
@@ -32,11 +33,6 @@ def start(message):
     bot.send_message(message.chat.id,
                      f"Привет, {message.from_user.first_name}! Этот бот предоставляет информацию о заготовке бригады Спутник-1 \U0001F916"
                      )
-
-    # bot.send_message(message.chat.id, "Какой месяц тебя интересует?", reply_markup=markup_1)
-    # bot.register_next_step_handler(message, on_click_1)
-    # bot.register_next_step_handler(message, menu_1)
-    print(message.text)
     menu_1(message)
 
 
@@ -45,24 +41,14 @@ def menu_1(message):
 
     bot.send_message(message.chat.id, "Какой месяц тебя интересует?", reply_markup=markup_1)
     bot.register_next_step_handler(message, on_click_1)
-    # on_click_1(message)
-    print(message.text)
 
 
 @bot.message_handler()
 def on_click_1(message):
-    print(message.text)
     if message.text == "Текущий месяц":
-        # bot.register_next_step_handler(message, data_month_now)
         data_month_now(message)
     elif message.text == "Прошедший месяц":
-        bot.register_next_step_handler(message, data_month_previous)
-
-# def on_click_1(message):
-#     if message.text == "Текущий месяц":
-#         data_month_now(message)
-#     elif message.text == "Прошедший месяц":
-#         data_month_previous(message)
+        data_month_previous(message)
 
 
 ################
@@ -77,32 +63,45 @@ def on_click_1(message):
 def data_month_now(message):
     bot.send_message(message.from_user.id, "...\U000023F3")
 
-    month = datetime.now().month
-    count_days = get_count_day_month(month)
-    name_month = get_name_month_now(month)
-    paths = get_paths_to_file(name_month, daily_report, report)
-    data_daily_file = openpyxl.load_workbook(paths['daily_report'], data_only=True)
-    date_update = get_date_update_file(paths['report'])
-    plan_volume = get_plan_volume(data_daily_file, count_days)
-    actual_volumes = get_actual_volume(data_daily_file, paths['report'])
+    obj = DataMonthNow(daily_report, report)
+    data = obj.get_actual_volume()
 
     bot.send_message(message.from_user.id, "Какую информацию предоставить?", reply_markup=markup_2)
-    bot.register_next_step_handler(message, data_beginning_month, date_update, actual_volumes)
-    print(message.text)
+    bot.register_next_step_handler(message, data_beginning_month, data)
 
 
-def data_beginning_month(message, date_update, actual_volumes):
-    print(message.text)
+def data_beginning_month(message, data):
+
+    # if message.text == "Объем заготовки с начала месяца":
+    #     bot.send_message(message.from_user.id,
+    #                  f"Данные на 20:00 {date_update}\nОбъем заготовки:{actual_volumes['actual']}/Объем по графику:{actual_volumes['plan']}")
+    #     bot.register_next_step_handler(message, data_beginning_month, date_update, actual_volumes)
+    # elif message.text == 'План на месяц':
+    #     bot.send_message(message.from_user.id, f"План большой")
+    #     bot.register_next_step_handler(message, data_beginning_month, date_update, actual_volumes)
+    # elif message.text == 'Назад':
+    #     menu_1()
+
     if message.text == "Объем заготовки с начала месяца":
         bot.send_message(message.from_user.id,
-                     f"Данные на 20:00 {date_update}\nОбъем заготовки:{actual_volumes['actual']}/Объем по графику:{actual_volumes['plan']}")
-        bot.register_next_step_handler(message, data_beginning_month, date_update, actual_volumes)
+                     f"Данные на 20:00 {data['update_time']}\nОбъем заготовки:{data['actual']}/Объем по графику:{data['plan']}")
+        deviation = data['actual'] - data['plan']
+        if deviation > 0:
+            bot.send_message(message.from_user.id, f'Перевыполнение {deviation} м³')
+        else:
+            bot.send_message(message.from_user.id, f'Отставание {abs(deviation)} м³')
+        bot.register_next_step_handler(message, data_beginning_month, data)
     elif message.text == 'План на месяц':
-        bot.send_message(message.from_user.id, f"План большой")
-        bot.register_next_step_handler(message, data_beginning_month, date_update, actual_volumes)
+        bot.send_message(message.from_user.id, f'{data['plan_month']} м³')
+        bot.register_next_step_handler(message, data_beginning_month, data)
+    elif message.text == 'Посуточная заготовка':
+        bot.send_message(message.from_user.id, 'Данных нет')
+        bot.register_next_step_handler(message, data_beginning_month, data)
+    elif message.text == 'Посменная заготовка':
+        bot.send_message(message.from_user.id, 'Данных нет')
+        bot.register_next_step_handler(message, data_beginning_month, data)
     elif message.text == 'Назад':
-        menu_1()
-
+        menu_1(message)
 
 
 # @bot.message_handler(func=lambda message: message.text == 'Посуточная заготовка')
@@ -115,44 +114,8 @@ def data_beginning_month(message, date_update, actual_volumes):
 
 @bot.message_handler()
 def data_month_previous(message):
-    pass
-# @bot.message_handler(content_types=['text'])
-# def after_text_2(message):
-#
-#     bot.send_message(message.from_user.id,
-#                      "Введите сложность из предложенных вариантов:")
-#     bot.send_message(message.chat.id, f'Сложность:{get_rating_list(session)}')
-#     theme = message.text.lower()
-#     bot.register_next_step_handler(message, compilation, theme)
-
-
-# @bot.message_handler()
-# def compilation(message, theme):
-#
-#     if message.text.isdigit() is False:
-#         bot.send_message(message.chat.id, "Проверьте введенные данные")
-#         after_text_1(message)
-#
-#     else:
-#         rating = int(message.text)
-#         bot.send_message(message.chat.id, "Получение подборки...")
-#         problems = get_compilation_problems(session, theme, rating)
-#         count = len(problems)
-#         num = 0
-#         if count != 0:
-#             if count < 10:
-#                 bot.send_message(message.chat.id, f"Всего найдено задач по данному запросу: {count}")
-#             for i in problems:
-#                 markup_2 = types.InlineKeyboardMarkup()
-#                 markup_2.add(types.InlineKeyboardButton('Перейти к задаче:',
-#                                                         url=f'https://codeforces.com/problemset/problem/{i.contest_id}/{i.index}'))
-#                 num += 1
-#                 bot.send_message(message.chat.id, f'{num}# {str(i)}', reply_markup=markup_2)
-#             bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
-#         else:
-#             bot.send_message(message.chat.id, f"По вашему запросу ничего не найдено.")
-#             after_text_1(message)
-#         bot.register_next_step_handler(message, on_click)
+    bot.send_message(message.from_user.id, 'Данных пока нет')
+    menu_1(message)
 
 
 bot.polling(none_stop=True)

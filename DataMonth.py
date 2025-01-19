@@ -28,17 +28,19 @@ class DataMonthNow:
         name_month = dict_months[self.month]
         return name_month
 
-    def get_paths_to_file(self, name_month_now):
+    def get_paths_to_file(self):
         """Возвращает маршруты до файлов"""
 
+        name_month_now = self.get_name_month_now()
         path_daily_report = self.daily_report[0] + name_month_now + self.daily_report[1] + name_month_now.lower() + self.daily_report[2]
         path_report = self.report[0] + name_month_now + self.report[1]
         paths = {'daily_report': path_daily_report, 'report': path_report}
         return paths
 
-    def get_data_daily_file(self, paths):
+    def get_data_daily_file(self):
         """Возвращает книгу суточный рапорт"""
 
+        paths = self.get_paths_to_file()
         data_file = openpyxl.load_workbook(paths['daily_report'], data_only=True)
 
         return data_file
@@ -51,17 +53,22 @@ class DataMonthNow:
     #     format_date = mtime_readable.strftime('%d.%m.%y')
     #     return format_date
 
-    def get_plan_volume(self, data_file, count_days_month):
+    def get_plan_volume(self):
         """Возвращает план на месяц"""
 
+        data_file = self.get_data_daily_file()
+        count_days_month = self.get_count_day_month()
         last_sheet = data_file[str(count_days_month)]
         plan = last_sheet['I47']
 
         return int(plan.value)
 
-    def get_actual_volume(self, data_file, paths):
+    def get_actual_volume(self):
         """Возвращает данные по заготовке с начала месяца"""
 
+        data_file = self.get_data_daily_file()
+        paths = self.get_paths_to_file()
+        plan_month = self.get_plan_volume()
         update_time = os.path.getmtime(paths['report'])
         mtime_readable = (datetime.fromtimestamp(update_time))
 
@@ -73,6 +80,11 @@ class DataMonthNow:
         work_page = data_file[f'{number_page - 1}']
         volume_actual = work_page['J47'].value
         volume_plan = work_page['I47'].value
-        res = {'actual': int(volume_actual), 'plan': int(volume_plan), 'update_time': format_date_update}
+        res = {
+            'actual': int(volume_actual),
+            'plan': int(volume_plan),
+            'update_time': format_date_update,
+            'plan_month': plan_month
+        }
         return res
 
