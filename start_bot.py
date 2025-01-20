@@ -20,10 +20,11 @@ markup_2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
 btn2_1 = types.KeyboardButton(text="План на месяц")
 btn2_2 = types.KeyboardButton(text="Объем заготовки с начала месяца")
 btn2_3 = types.KeyboardButton(text="Посуточная заготовка")
-btn2_4 = types.KeyboardButton(text="Посменная заготовка")
+# btn2_4 = types.KeyboardButton(text="Посменная заготовка")
 btn2_5 = types.KeyboardButton(text="Назад")
 markup_2.add(btn2_1, btn2_2)
-markup_2.add(btn2_3, btn2_4)
+# markup_2.add(btn2_3, btn2_4)
+markup_2.add(btn2_3)
 markup_2.add(btn2_5)
 
 
@@ -84,22 +85,33 @@ def data_beginning_month(message, data):
 
     if message.text == "Объем заготовки с начала месяца":
         bot.send_message(message.from_user.id,
-                     f"Данные на 20:00 {data['update_time']}\nОбъем заготовки:{data['actual']}/Объем по графику:{data['plan']}")
+                     f"Данные на 20:00 {data['update_time']}\nЗаготовка факт: {data['actual']} м³\nЗаготовка план: {data['plan']} м³")
         deviation = data['actual'] - data['plan']
         if deviation > 0:
-            bot.send_message(message.from_user.id, f'Перевыполнение {deviation} м³')
+            bot.send_message(message.from_user.id, f'Перевыполнение: {deviation} м³')
         else:
-            bot.send_message(message.from_user.id, f'Отставание {abs(deviation)} м³')
+            bot.send_message(message.from_user.id, f'Отставание: {abs(deviation)} м³')
         bot.register_next_step_handler(message, data_beginning_month, data)
+
     elif message.text == 'План на месяц':
         bot.send_message(message.from_user.id, f'{data['plan_month']} м³')
         bot.register_next_step_handler(message, data_beginning_month, data)
+
     elif message.text == 'Посуточная заготовка':
-        bot.send_message(message.from_user.id, 'Данных нет')
+        for i in data['actual_list']:
+            for k, v in i.items():
+                res = v['plan'] - v['actual']
+                if res > 0:
+                    bot.send_message(message.from_user.id,
+                        f'{k}.01\nПлан: {v['plan']} м³\nФакт: {v['actual']} м³\nНе выполнили на {res} м³')
+                else:
+                    bot.send_message(message.from_user.id,
+                        f'{k}.01\nПлан: {v['plan']} м³\nФакт: {v['actual']} м³\nПеревыполнили на {abs(res)} м³')
+
         bot.register_next_step_handler(message, data_beginning_month, data)
-    elif message.text == 'Посменная заготовка':
-        bot.send_message(message.from_user.id, 'Данных нет')
-        bot.register_next_step_handler(message, data_beginning_month, data)
+    # elif message.text == 'Посменная заготовка':
+    #     bot.send_message(message.from_user.id, 'Данных нет')
+    #     bot.register_next_step_handler(message, data_beginning_month, data)
     elif message.text == 'Назад':
         menu_1(message)
 

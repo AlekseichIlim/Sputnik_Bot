@@ -77,6 +77,17 @@ class DataMonthNow:
         format_date_update = back_date_update.strftime('%d.%m.%y')
 
         number_page = mtime_readable.day
+
+        actual_list = []
+        for i in range(number_page):
+            d = {}
+            if i == 0:
+                continue
+            work_page = data_file[f'{i}']
+            d[f'{i}'] = {'actual': int(work_page['F47'].value), 'plan': int(work_page['E47'].value)}
+            actual_list.append(d)
+
+
         work_page = data_file[f'{number_page - 1}']
         volume_actual = work_page['J47'].value
         volume_plan = work_page['I47'].value
@@ -84,7 +95,8 @@ class DataMonthNow:
             'actual': int(volume_actual),
             'plan': int(volume_plan),
             'update_time': format_date_update,
-            'plan_month': plan_month
+            'plan_month': plan_month,
+            'actual_list': actual_list,
         }
         return res
 
